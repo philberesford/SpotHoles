@@ -1,0 +1,190 @@
+﻿@model PotHoles.Models.PotHoleViewModel
+@{
+    ViewBag.Title = "Spotholes - urban-crowd-sourced-pot-holes";
+}
+<script src="~/Scripts/mapping/src/clustering/build/clusterer.min.js"></script>
+<script>
+    
+    // Sorry about the mess that is the JS!!!
+    
+    var geocoder;
+    var map;
+
+    $(document).ready(function () {
+        
+        var init = function () {
+            $('#frmAddThanks').hide();
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(success, error);
+            } else {
+                error('not supported');
+            }
+
+            //google.maps.event.addListener(map, 'click', function(event) {
+            //    alert(event.LatLng.lat() + ' ' + event.LatLng.lng());
+            //});
+        }
+
+        $('#dlgAdd').hide();
+
+        $('#btnAdd').bind('click', btnAddClick);
+        $('#btnAdd').bind('click', btnAddPotHoleClick);
+        $('#btnMoreHoles').bind('click', btnMoreHolesClick);
+        $('#btnAddAnother').bind('click', btnAddAnotherClick);
+        
+        function btnAddPotHoleClick() {
+            $('#dlgAdd').show();
+        }
+        function btnAddAnotherClick() {
+            $('#frmAddThanks').hide();
+            $('#frmAdd').show();
+
+        }
+
+        function btnAddClick() {
+            var longitude = $('#@Html.IdFor(m => m.longitude)').val();
+            var latitude = $('#@Html.IdFor(m => m.latitude)').val();
+            var desc = $('#description').val();
+
+           // window.alert(desc);
+            
+            AddNewPotHole(longitude, latitude, desc);
+            $('#frmAdd').hide();
+            $('#frmAddThanks').show();
+
+        }
+
+
+        function btnMoreHolesClick() {
+            var address = document.getElementById('txtPostcode').value;
+            geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ 'address': address }, function (results, status) {
+                if (status == google.maps.GeocoderStatus.OK) {
+
+                    // TODO - what is k and A? maybe use proper methods/parameters...
+                    drawMap(results[0].geometry.location.k, results[0].geometry.location.A);
+                  
+                } else {
+                    alert('Geocode was not successful for the following reason: ' + status);
+                }
+            });
+        }
+
+    
+        init();
+    });
+
+    function drawMap(latitude, longitude) {
+        var latlng = new google.maps.LatLng(latitude, longitude);
+        var myOptions = {
+            zoom: 15,
+            center: latlng,
+            mapTypeControl: false,
+            navigationControlOptions: { style: google.maps.NavigationControlStyle.SMALL },
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+        };
+
+        // TODO Move to init()
+        geocoder = new google.maps.Geocoder();
+        map = new google.maps.Map(document.getElementById("mapcanvas"), myOptions);
+
+        var bounds = map.getBounds();
+
+        GetPotholesByLocation(latitude, longitude, 50);
+    }
+
+    function success(position) {
+        var s = document.querySelector('#status');
+
+        if (s.className == 'success') {
+            // not sure why we're hitting this twice in FF, I think it's to do with a cached result coming back
+            return;
+        }
+
+        s.innerHTML = "found you!";
+        s.className = 'success';
+
+        var mapcanvas = document.createElement('div');
+        mapcanvas.id = 'mapcanvas';
+        mapcanvas.style.height = '250px';
+        mapcanvas.style.width = '1024px';
+
+        document.querySelector('article').appendChild(mapcanvas);
+
+        drawMap(position.coords.latitude, position.coords.longitude);
+
+        //var marker = new google.maps.Marker({
+        //    position: latlng,
+        //    map: map,
+        //    title: "You are here! (at least within a " + position.coords.accuracy + " meter radius)"
+        //});
+    }
+
+    function error(msg) {
+        var s = document.querySelector('#status');
+        s.innerHTML = typeof msg == 'string' ? msg : "failed";
+        s.className = 'fail';
+
+        // console.log(arguments);
+    }
+
+
+</script>
+
+
+
+
+<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+
+
+
+
+<div class="jumbotron">
+    <p style="text-align: center; padding: 50px;">Spot Holes is an urban crowd sourcing platform that allows the public to report road potholes on the spot from their smart phones</p>
+    <article>
+        <p style="display:none">Finding your location: <span id="status">checking...</span></p>         
+    </article>
+    <div>
+        <img src="~/Content/img/spotholes-fixed.png" width="1024"/>
+    </div>
+
+    <meta name="viewport" content="width=480" />
+
+    <p><input type="text" value="BS1 4AH" name="postcode" id="txtPostcode" />
+        <a class="btn btn-primary btn-large" id="btnMoreHoles">More holes &raquo;</a>       
+    </p>
+
+</div>
+   
+    <div id="dlgAdd">
+        <div id="frmAddThanks">
+            <p>Thank you for adding a pothole</p>
+            <input type="button" class="btn btn-info" id="btnAddAnother" value="Add Another">
+        </div>
+        <div id="frmAdd">
+            <h2>Add a new pot hole</h2>
+            <p>
+                <div>
+                    @Html.LabelFor(m => m.longitude)
+                    @Html.TextBoxFor(m => m.longitude)
+                </div>
+
+                <div>
+                    @Html.LabelFor(m => m.latitude)
+                    @Html.TextBoxFor(m => m.latitude)
+                </div>
+
+                <div>
+                    @Html.LabelFor(m => m.description)
+                    <select name="description" id="description">
+                        <option value="SMALL">Small</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LARGE">Large</option>
+                    </select>
+                </div>
+
+                <input type="submit" class="btn btn-danger" id="btnAdd" value="Danger">
+            </p>
+        </div>
+</div>
